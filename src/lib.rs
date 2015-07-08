@@ -31,12 +31,16 @@ pub fn register_templates(bind: &mut Bind) -> diecast::Result<()> {
 
         let name = try! {
             no_ext.file_name()
-            .ok_or(format!("[HANDLEBARS] not a regular file: {:?}", path))
+            .ok_or(format!(
+                "[HANDLEBARS] not a regular file: {:?}",
+                path))
         };
 
         let as_str = try! {
             name.to_str()
-            .ok_or(format!("[HANDLEBARS] could not convert file name to UTF-8: {:?}", path))
+            .ok_or(format!(
+                "[HANDLEBARS] could not convert file name to UTF-8: {:?}",
+                path))
         };
 
         registry.register_template_string(as_str, template).map_err(From::from)
@@ -49,13 +53,16 @@ pub fn register_templates(bind: &mut Bind) -> diecast::Result<()> {
     for item in bind.items() {
         let source = try! {
             item.source()
-            .ok_or(format!("[HANDLEBARS] no source for item {:?}", item))
+            .ok_or(format!(
+                "[HANDLEBARS] no source for item {:?}",
+                item))
         };
 
         try!(load_template(&source, &mut registry));
     }
 
-    bind.data().extensions.write().unwrap().insert::<Templates>(Arc::new(registry));
+    bind.data().extensions.write().unwrap()
+    .insert::<Templates>(Arc::new(registry));
 
     Ok(())
 }
@@ -76,7 +83,8 @@ where H: Fn(&Item) -> Json + Sync + Send + 'static {
                 .data().extensions.read().unwrap();
 
             let registry = try! {
-                data.get::<Templates>().ok_or(format!(
+                data.get::<Templates>()
+                .ok_or(format!(
                     "[HANDLEBARS] no template registry found in binding {:?}",
                     self.binding))
             };
@@ -99,5 +107,4 @@ where H: Fn(&Item) -> Json + Sync + Send + 'static, D: Into<String>, N: Into<Str
         handler: handler,
     }
 }
-
 
