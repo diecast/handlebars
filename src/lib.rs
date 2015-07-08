@@ -47,7 +47,10 @@ pub fn register_templates(bind: &mut Bind) -> diecast::Result<()> {
     // NOTE: this needs access to all of the templates,
     // even if only one changed, so don't use iter!
     for item in bind.items() {
-        let source = try!(item.source().ok_or(format!("No source for item {:?}", item)));
+        let source = try! {
+            item.source()
+            .ok_or(format!("[HANDLEBARS] no source for item {:?}", item))
+        };
 
         try!(load_template(&source, &mut registry));
     }
