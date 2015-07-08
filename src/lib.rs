@@ -31,12 +31,12 @@ pub fn register_templates(bind: &mut Bind) -> diecast::Result<()> {
 
         let name = try! {
             no_ext.file_name()
-            .ok_or("[HANDLEBARS] could not convert file name to UTF-8")
+            .ok_or(format!("[HANDLEBARS] not a regular file: {:?}", path))
         };
 
         let as_str = try! {
             name.to_str()
-            .ok_or("[HANDLEBARS] could not convert file name to UTF-8")
+            .ok_or(format!("[HANDLEBARS] could not convert file name to UTF-8: {:?}", path))
         };
 
         registry.register_template_string(as_str, template).map_err(From::from)
