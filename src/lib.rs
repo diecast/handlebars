@@ -71,11 +71,6 @@ impl<H> Handle<Item> for RenderTemplate<H>
 where H: Fn(&Item) -> Json + Sync + Send + 'static {
     fn handle(&self, item: &mut Item) -> diecast::Result<()> {
         item.body = {
-            // TODO
-            // create a diecast Error type for extension unlocking
-            // basically wrap the RwLock PoisonError or whatever it's called
-            // item.bind().dependencies["test"].data().extensions().
-            // item.bind().dependencies["test"].data().extensions_mut().
             let data =
                 item.bind().dependencies[&self.binding]
                 .data().extensions.read().unwrap();
