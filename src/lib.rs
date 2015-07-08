@@ -8,9 +8,10 @@ use std::path::Path;
 use std::fs::File;
 use std::io::Read;
 
-use diecast::{Handle, Item, Bind};
 use rustc_serialize::json::Json;
 use handlebars::Handlebars;
+
+use diecast::{Handle, Item, Bind};
 
 pub struct Templates;
 
@@ -19,18 +20,26 @@ impl typemap::Key for Templates {
 }
 
 pub fn register_templates(bind: &mut Bind) -> diecast::Result<()> {
-    fn load_template(path: &Path, registry: &mut Handlebars) {
+    fn load_template(path: &Path, registry: &mut Handlebars) -> diecast::Result<()> {
         let mut template = String::new();
 
-        File::open(path)
-        .unwrap()
-        .read_to_string(&mut template)
-        .unwrap();
+        let mut f = try!(File::open(path));
 
-        let path = path.with_extension("");
-        let name = path.file_name().unwrap().to_str().unwrap();
+        try!(f.read_to_string(&mut template));
 
-        registry.register_template_string(name, template).unwrap();
+        let no_ext = path.with_extension("");
+
+        let name = try! {
+            no_ext.file_name()
+            .ok_or("[HANDLEBARS] could not convert file name to UTF-8")
+        };
+
+        let as_str = try! {
+            name.to_str()
+            .ok_or("[HANDLEBARS] could not convert file name to UTF-8")
+        };
+
+        registry.register_template_string(as_str, template).map_err(From::from)
     }
 
     let mut registry = Handlebars::new();
@@ -38,7 +47,9 @@ pub fn register_templates(bind: &mut Bind) -> diecast::Result<()> {
     // NOTE: this needs access to all of the templates,
     // even if only one changed, so don't use iter!
     for item in bind.items() {
-        load_template(&item.source().unwrap(), &mut registry);
+        let source = try!(item.source().ok_or(format!("No source for item {:?}", item)));
+
+        try!(load_template(&source, &mut registry));
     }
 
     bind.data().extensions.write().unwrap().insert::<Templates>(Arc::new(registry));
@@ -57,14 +68,24 @@ impl<H> Handle<Item> for RenderTemplate<H>
 where H: Fn(&Item) -> Json + Sync + Send + 'static {
     fn handle(&self, item: &mut Item) -> diecast::Result<()> {
         item.body = {
+            // TODO
+            // create a diecast Error type for extension unlocking
+            // basically wrap the RwLock PoisonError or whatever it's called
+            // item.bind().dependencies["test"].data().extensions().
+            // item.bind().dependencies["test"].data().extensions_mut().
             let data =
                 item.bind().dependencies[&self.binding]
                 .data().extensions.read().unwrap();
-            let registry = data.get::<Templates>().unwrap();
+
+            let registry = try! {
+                data.get::<Templates>().ok_or(format!(
+                    "[HANDLEBARS] no template registry found in binding {:?}",
+                    self.binding))
+            };
 
             let json = (self.handler)(item);
 
-            registry.render(&self.name, &json).unwrap()
+            try!(registry.render(&self.name, &json))
         };
 
         Ok(())
